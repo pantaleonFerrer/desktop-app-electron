@@ -13,12 +13,8 @@ const trayManager = new TrayManager(windowManager);
 
 app.whenReady().then(async () => {
   ipcHandlers.register();
-  const window = windowManager.create();
+  windowManager.create();
   trayManager.create();
-
-  if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
-    window.show();
-  }
 
   try {
     await systemService.setAutoStart(true);

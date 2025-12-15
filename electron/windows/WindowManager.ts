@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { BrowserWindow } from 'electron';
+import { app, BrowserWindow } from 'electron';
 
 export class WindowManager {
   private mainWindow: BrowserWindow | null = null;
@@ -30,8 +30,8 @@ export class WindowManager {
       frame: false,
       transparent: false,
       resizable: true,
-      show: this.isDev,
-      skipTaskbar: true,
+      show: false,
+      skipTaskbar: false,
       webPreferences: {
         preload: preloadPath,
         nodeIntegration: false,
@@ -50,12 +50,33 @@ export class WindowManager {
         }
       });
     } else {
-      this.mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+      const appPath = app.getAppPath();
+      const htmlPath = path.join(appPath, 'dist', 'index.html');
+
+      if (!fs.existsSync(htmlPath)) {
+        const fallbackPath = path.join(__dirname, '../dist/index.html');
+        if (fs.existsSync(fallbackPath)) {
+          this.mainWindow.loadFile(fallbackPath);
+        } else {
+          throw new Error(`HTML file not found. Tried: ${htmlPath} and ${fallbackPath}`);
+        }
+      } else {
+        this.mainWindow.loadFile(htmlPath);
+      }
+
       this.mainWindow.webContents.once('did-finish-load', () => {
         if (this.mainWindow) {
           this.mainWindow.show();
+          this.mainWindow.focus();
         }
       });
+
+      this.mainWindow.webContents.once(
+        'did-fail-load',
+        (_event, errorCode, errorDescription, validatedURL) => {
+          throw new Error(`Failed to load ${validatedURL}: ${errorCode} - ${errorDescription}`);
+        }
+      );
     }
 
     this.setupEventHandlers();

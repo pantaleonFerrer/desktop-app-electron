@@ -8,7 +8,7 @@ const execAsync = promisify(exec);
 export class WindowsPlatformService implements IPlatformService {
   async getInstalledApps(): Promise<IApp[]> {
     try {
-      const script = `Get-ItemProperty HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\* | Where-Object { $_.DisplayName -and $_.DisplayName -notlike '*Update*' -and $_.DisplayName -notlike '*Hotfix*' } | Select-Object DisplayName, Publisher, InstallDate, DisplayVersion | ConvertTo-Json -Compress`;
+      const script = `$paths = @('HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*', 'HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*', 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*'); $apps = @(); foreach ($path in $paths) { try { $items = Get-ItemProperty $path -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -and $_.DisplayName -notlike '*Update*' -and $_.DisplayName -notlike '*Hotfix*' -and $_.DisplayName -notlike '*Security Update*' -and $_.DisplayName -notlike '*KB*' }; if ($items) { $apps += $items } } catch {} }; $apps | Select-Object DisplayName, Publisher, InstallDate, DisplayVersion -Unique | ConvertTo-Json -Compress`;
       const { stdout, stderr } = await execAsync(
         `powershell -NoProfile -ExecutionPolicy Bypass -Command "${script}"`,
         {
@@ -28,14 +28,22 @@ export class WindowsPlatformService implements IPlatformService {
       const apps = JSON.parse(trimmedOutput);
       const appArray = Array.isArray(apps) ? apps : apps ? [apps] : [];
 
-      return appArray
-        .filter((app: any) => app?.DisplayName)
-        .map((app: any) => ({
-          DisplayName: app.DisplayName || 'Unknown',
-          Publisher: app.Publisher || 'Unknown',
-          DisplayVersion: app.DisplayVersion || 'Unknown',
-          InstallDate: app.InstallDate || '',
-        }));
+      const uniqueApps = new Map<string, any>();
+      for (const app of appArray) {
+        if (app?.DisplayName) {
+          const key = app.DisplayName.toLowerCase();
+          if (!uniqueApps.has(key)) {
+            uniqueApps.set(key, app);
+          }
+        }
+      }
+
+      return Array.from(uniqueApps.values()).map((app: any) => ({
+        DisplayName: app.DisplayName || 'Unknown',
+        Publisher: app.Publisher || 'Unknown',
+        DisplayVersion: app.DisplayVersion || 'Unknown',
+        InstallDate: app.InstallDate || '',
+      }));
     } catch (error) {
       throw new Error(
         `Failed to get installed apps: ${error instanceof Error ? error.message : String(error)}`
