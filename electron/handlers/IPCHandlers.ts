@@ -10,13 +10,21 @@ export class IPCHandlers {
 
   register(): void {
     ipcMain.handle('get-installed-apps', async () => {
-      return await this.systemService.getInstalledApps();
+      try {
+        return await this.systemService.getInstalledApps();
+      } catch (error) {
+        throw new Error(error instanceof Error ? error.message : 'Failed to get installed apps');
+      }
     });
 
     ipcMain.handle('get-system-users', async () => {
-      const users = await this.systemService.getSystemUsers();
-      const currentUser = await this.systemService.getCurrentUser();
-      return { users, currentUser };
+      try {
+        const users = await this.systemService.getSystemUsers();
+        const currentUser = await this.systemService.getCurrentUser();
+        return { users, currentUser };
+      } catch (error) {
+        throw new Error(error instanceof Error ? error.message : 'Failed to get system users');
+      }
     });
 
     ipcMain.handle('close-app', async () => {
