@@ -9,4 +9,12 @@ const pinia = createPinia();
 
 app.use(pinia);
 app.use(router);
+
+// Ensure we navigate to home if no route is set
+router.isReady().then(() => {
+  if (router.currentRoute.value.path === '/' || !router.currentRoute.value.matched.length) {
+    router.replace('/');
+  }
+});
+
 app.mount('#app');

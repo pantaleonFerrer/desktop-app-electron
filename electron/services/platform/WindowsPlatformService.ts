@@ -73,12 +73,25 @@ export class WindowsPlatformService implements IPlatformService {
       const users = JSON.parse(trimmedOutput);
       const userArray = Array.isArray(users) ? users : users ? [users] : [];
 
-      return userArray.map((user: any) => ({
-        Name: user.Name || 'Unknown',
-        Enabled: user.Enabled !== false,
-        Description: user.Description || '',
-        LastLogon: user.LastLogon ? new Date(user.LastLogon).toISOString() : 'Never',
-      }));
+      return userArray.map((user: any) => {
+        let lastLogon = 'Never';
+        if (user.LastLogon && user.LastLogon !== null) {
+          try {
+            const date = new Date(user.LastLogon);
+            if (!isNaN(date.getTime())) {
+              lastLogon = date.toISOString();
+            }
+          } catch {
+            // Invalid date, keep as 'Never'
+          }
+        }
+        return {
+          Name: user.Name || 'Unknown',
+          Enabled: user.Enabled !== false,
+          Description: user.Description || '',
+          LastLogon: lastLogon,
+        };
+      });
     } catch (error) {
       throw new Error(
         `Failed to get system users: ${error instanceof Error ? error.message : String(error)}`
