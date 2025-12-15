@@ -30,7 +30,7 @@ export class WindowManager {
       frame: false,
       transparent: false,
       resizable: true,
-      show: false,
+      show: this.isDev,
       skipTaskbar: true,
       webPreferences: {
         preload: preloadPath,
@@ -43,8 +43,19 @@ export class WindowManager {
     if (this.isDev) {
       this.mainWindow.loadURL('http://localhost:5173');
       this.mainWindow.webContents.openDevTools();
+      this.mainWindow.webContents.once('did-finish-load', () => {
+        if (this.mainWindow) {
+          this.mainWindow.show();
+          this.mainWindow.focus();
+        }
+      });
     } else {
       this.mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+      this.mainWindow.webContents.once('did-finish-load', () => {
+        if (this.mainWindow) {
+          this.mainWindow.show();
+        }
+      });
     }
 
     this.setupEventHandlers();
